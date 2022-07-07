@@ -74,7 +74,7 @@ class TrainingTask(LightningModule):
 
     def training_step(self, batch, batch_idx):
         batch = self._preprocess_batch_input(batch)
-        preds, loss, loss_states = self.model.forward_train(batch)
+        preds, _, loss, loss_states = self.model.forward_train(batch)
 
         # log train losses
         if self.global_step % self.cfg.log.interval == 0:
@@ -108,9 +108,9 @@ class TrainingTask(LightningModule):
     def validation_step(self, batch, batch_idx):
         batch = self._preprocess_batch_input(batch)
         if self.weight_averager is not None:
-            preds, loss, loss_states = self.avg_model.forward_train(batch)
+            preds, _, loss, loss_states = self.avg_model.forward_train(batch)
         else:
-            preds, loss, loss_states = self.model.forward_train(batch)
+            preds, _, loss, loss_states = self.model.forward_train(batch)
 
         if batch_idx % self.cfg.log.interval == 0:
             lr = self.optimizers().param_groups[0]["lr"]

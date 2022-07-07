@@ -48,8 +48,10 @@ class BaseDataset(Dataset, metaclass=ABCMeta):
         self,
         img_path: str,
         ann_path: str,
+        image_size: Tuple[int, int],
         input_size: Tuple[int, int],
         pipeline: Dict,
+        resizecrop: bool = False,
         keep_ratio: bool = True,
         use_instance_mask: bool = False,
         use_seg_mask: bool = False,
@@ -61,6 +63,8 @@ class BaseDataset(Dataset, metaclass=ABCMeta):
         assert mode in ["train", "val", "test"]
         self.img_path = img_path
         self.ann_path = ann_path
+        self.image_size = image_size
+        self.resizecrop = resizecrop
         self.input_size = input_size
         self.pipeline = Pipeline(pipeline, keep_ratio)
         self.keep_ratio = keep_ratio

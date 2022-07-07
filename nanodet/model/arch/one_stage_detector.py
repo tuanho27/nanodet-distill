@@ -38,18 +38,20 @@ class OneStageDetector(nn.Module):
         self.epoch = 0
 
     def forward(self, x):
-        x = self.backbone(x)
+        feat = self.backbone(x)
         if hasattr(self, "fpn"):
-            x = self.fpn(x)
+            x = self.fpn(feat)
+        else:
+            x = feat
         if hasattr(self, "head"):
             x = self.head(x)
-        return x
+        return x, feat
 
     def inference(self, meta):
         with torch.no_grad():
             torch.cuda.synchronize()
             time1 = time.time()
-            preds = self(meta["img"])
+            preds, _ = self(meta["img"])
             torch.cuda.synchronize()
             time2 = time.time()
             print("forward time: {:.3f}s".format((time2 - time1)), end=" | ")
@@ -59,10 +61,10 @@ class OneStageDetector(nn.Module):
         return results
 
     def forward_train(self, gt_meta):
-        preds = self(gt_meta["img"])
-        loss, loss_states = self.head.loss(preds, gt_meta)
+        preds, feat = self(gt_meta["img"])
+        loss, loss_states, batch_assign_res = self.head.loss(preds, gt_meta)
 
-        return preds, loss, loss_states
+        return preds, feat, loss, loss_states, batch_assign_res
 
     def set_epoch(self, epoch):
         self.epoch = epoch

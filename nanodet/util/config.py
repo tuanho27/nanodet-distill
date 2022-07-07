@@ -9,6 +9,12 @@ cfg.model.arch.backbone = CfgNode(new_allowed=True)
 cfg.model.arch.fpn = CfgNode(new_allowed=True)
 cfg.model.arch.head = CfgNode(new_allowed=True)
 
+cfg.teacher_model = CfgNode(new_allowed=True)
+cfg.teacher_model.arch = CfgNode(new_allowed=True)
+cfg.teacher_model.arch.backbone = CfgNode(new_allowed=True)
+cfg.teacher_model.arch.fpn = CfgNode(new_allowed=True)
+cfg.teacher_model.arch.head = CfgNode(new_allowed=True)
+
 # DATASET related params
 cfg.data = CfgNode(new_allowed=True)
 cfg.data.train = CfgNode(new_allowed=True)
@@ -16,6 +22,9 @@ cfg.data.val = CfgNode(new_allowed=True)
 cfg.device = CfgNode(new_allowed=True)
 # train
 cfg.schedule = CfgNode(new_allowed=True)
+
+#distill
+cfg.distill = CfgNode(new_allowed=True)
 
 # logger
 cfg.log = CfgNode()

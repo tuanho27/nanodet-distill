@@ -10,6 +10,7 @@ from nanodet.util import bbox2distance, distance2bbox, multi_apply, overlay_bbox
 from ...data.transform.warp import warp_boxes
 from ..loss.gfocal_loss import DistributionFocalLoss, QualityFocalLoss
 from ..loss.iou_loss import GIoULoss
+from ..loss.smooth_l1_loss import SmoothL1Loss
 from ..module.conv import ConvModule, DepthwiseConvModule
 from ..module.init_weights import normal_init
 from ..module.nms import multiclass_nms
@@ -82,6 +83,10 @@ class NanoDetPlusHead(nn.Module):
             loss_weight=self.loss_cfg.loss_dfl.loss_weight
         )
         self.loss_bbox = GIoULoss(loss_weight=self.loss_cfg.loss_bbox.loss_weight)
+
+        # self.loss_ct_reg = SmoothL1Loss(beta=self.loss_cfg.loss_ct_reg.beta, 
+        #         loss_weight=self.loss_cfg.loss_ct_reg.loss_weight
+        # )
         self._init_layers()
         self.init_weights()
 
@@ -147,7 +152,7 @@ class NanoDetPlusHead(nn.Module):
         outputs = torch.cat(outputs, dim=2).permute(0, 2, 1)
         return outputs
 
-    def loss(self, preds, gt_meta, aux_preds=None):
+    def loss(self, preds, gt_meta, aux_preds=None): #, ct_preds=None):
         """Compute losses.
         Args:
             preds (Tensor): Prediction output.
@@ -186,6 +191,11 @@ class NanoDetPlusHead(nn.Module):
         dis_preds = self.distribution_project(reg_preds) * center_priors[..., 2, None]
         decoded_bboxes = distance2bbox(center_priors[..., :2], dis_preds)
 
+        # ct_dis_preds = (
+        #     self.distribution_project(ct_preds) * center_priors[..., 2, None]
+        # )
+        # ct_decoded_bboxes = distance2bbox(center_priors[..., :2], ct_dis_preds)
+
         if aux_preds is not None:
             # use auxiliary head to assign
             aux_cls_preds, aux_reg_preds = aux_preds.split(
@@ -217,6 +227,10 @@ class NanoDetPlusHead(nn.Module):
         loss, loss_states = self._get_loss_from_assign(
             cls_preds, reg_preds, decoded_bboxes, batch_assign_res
         )
+        
+        # ct_loss, ct_loss_states = self._get_loss_from_assign(
+        #     cls_preds, ct_preds, ct_decoded_bboxes, batch_assign_res
+        # )
 
         if aux_preds is not None:
             aux_loss, aux_loss_states = self._get_loss_from_assign(
@@ -225,7 +239,7 @@ class NanoDetPlusHead(nn.Module):
             loss = loss + aux_loss
             for k, v in aux_loss_states.items():
                 loss_states["aux_" + k] = v
-        return loss, loss_states
+        return loss, loss_states, batch_assign_res
 
     def _get_loss_from_assign(self, cls_preds, reg_preds, decoded_bboxes, assign):
         device = cls_preds.device

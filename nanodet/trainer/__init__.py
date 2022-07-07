@@ -12,5 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from .task import TrainingTask
+from .distill_task import TrainingDistillTask
 
-__all__ = ["TrainingTask"]
+__all__ = ["TrainingTask","TrainingDistillTask"]

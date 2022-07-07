@@ -34,6 +34,7 @@ class NanoDetPlus(OneStageDetector):
         )
         self.aux_fpn = copy.deepcopy(self.fpn)
         self.aux_head = build_head(aux_head)
+        # self.contour_head = build_head(contour_head)
         self.detach_epoch = detach_epoch
 
     def forward_train(self, gt_meta):
@@ -53,5 +54,6 @@ class NanoDetPlus(OneStageDetector):
             )
         head_out = self.head(fpn_feat)
         aux_head_out = self.aux_head(dual_fpn_feat)
-        loss, loss_states = self.head.loss(head_out, gt_meta, aux_preds=aux_head_out)
-        return head_out, loss, loss_states
+        # ct_head_out = self.contour_head(fpn_feat)
+        loss, loss_states,  batch_assign_res = self.head.loss(head_out, gt_meta, aux_preds=aux_head_out)#, ct_preds=ct_head_out)
+        return head_out, feat, loss, loss_states, batch_assign_res

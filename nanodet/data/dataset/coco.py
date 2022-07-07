@@ -124,8 +124,22 @@ class CocoDataset(BaseDataset):
         """
         img_info = self.get_per_img_info(idx)
         file_name = img_info["file_name"]
+        if "woodscape" in file_name:
+            name = file_name.split("woodscape_")[-1] + ".png"
+            file_name = f"woodscape/{name}"
+        else:
+            fname = "_".join(file_name.split("_")[:-1])
+            file_name = fname + '/images/' + file_name
         image_path = os.path.join(self.img_path, file_name)
+
         img = cv2.imread(image_path)
+        if self.resizecrop:
+            img = cv2.resize(img, tuple(self.image_size))
+            pix_crop = [int((self.image_size[0] - self.input_size[0])/2), int(self.image_size[1] - self.input_size[1])]
+            #opencv read HWC while size is defined as WH
+            # img = img[pix_crop[0]:self.image_size[0]-pix_crop[0], pix_crop[1]:, :]
+            img = img[ pix_crop[1]:, pix_crop[0]:self.image_size[0]-pix_crop[0], :]
+
         if img is None:
             print("image {} read failed.".format(image_path))
             raise FileNotFoundError("Cant load image! Please check image path!")

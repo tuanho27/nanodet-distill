@@ -75,7 +75,7 @@ def main(args):
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=cfg.device.batchsize_per_gpu,
-        shuffle=True,
+        shuffle=False,
         num_workers=cfg.device.workers_per_gpu,
         pin_memory=True,
         collate_fn=naive_collate,

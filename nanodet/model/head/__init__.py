@@ -4,6 +4,7 @@ from .gfl_head import GFLHead
 from .nanodet_head import NanoDetHead
 from .nanodet_plus_head import NanoDetPlusHead
 from .simple_conv_head import SimpleConvHead
+from .contour_conv_head import ContourConvHead
 
 
 def build_head(cfg):
@@ -17,5 +18,7 @@ def build_head(cfg):
         return NanoDetPlusHead(**head_cfg)
     elif name == "SimpleConvHead":
         return SimpleConvHead(**head_cfg)
+    elif name == "ContourConvHead":
+        return ContourConvHead(**head_cfg)
     else:
         raise NotImplementedError
