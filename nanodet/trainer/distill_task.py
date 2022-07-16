@@ -120,18 +120,19 @@ class TrainingDistillTask(pl.LightningModule):
         # print(f"TC prob: {teacher_prob.shape} ST prob: {student_prob.shape}")
         # print(f"TC logit: {teacher_logits.shape} ST logit: {student_logits.shape}")
 
-        # kl_loss  = F.kl_div(self.softmax(student_prob), self.softmax(teacher_prob), reduction='batchmean') * (self.temperature**2) + 0.1
-        # embed_loss = 1 - torch.mean(F.cosine_similarity(student_logits, self.conv1x1(teacher_logits), dim=-1)) #this loss will be small if two tensor are similar
-        kd_triplet_loss = self.kd_triplet_loss(student_prob, teacher_prob, prior_assigns[0])
+        kl_loss  = F.kl_div(self.softmax(student_prob), self.softmax(teacher_prob), reduction='batchmean') * (self.temperature**2) + 0.1
+        embed_loss = 1 - torch.mean(F.cosine_similarity(student_logits, self.conv1x1(teacher_logits), dim=-1)) #this loss will be small if two tensor are similar
+        # kd_triplet_loss = self.kd_triplet_loss(student_prob, teacher_prob, prior_assigns[0])
 
-        # final_state_loss["kd_loss"] = kl_loss
-        # final_state_loss["cos_embed_loss"] = embed_loss
-        final_state_loss['kd_triplet_loss'] = self.kd_triplet_loss(student_prob, teacher_prob, prior_assigns[0])
+        final_state_loss["kd_loss"] = kl_loss
+        final_state_loss["cos_embed_loss"] = embed_loss
+        # final_state_loss['kd_triplet_loss'] = self.kd_triplet_loss(student_prob, teacher_prob, prior_assigns[0])
 
-        final_loss = loss + kd_triplet_loss #+ kl_loss + embed_loss
+        # final_loss = loss + kd_triplet_loss #+ kl_loss + embed_loss
+        final_loss = loss + kl_loss + embed_loss
 
-        # logit_diff = F.mse_loss(student_logits, teacher_logits)
-        # prob_diff = F.l1_loss(student_prob, teacher_prob)
+        logit_diff = F.mse_loss(student_logits, self.conv1x1(teacher_logits))
+        prob_diff = F.l1_loss(self.softmax(student_prob), self.softmax(teacher_prob))
 
         return final_loss, final_state_loss
 
@@ -142,7 +143,7 @@ class TrainingDistillTask(pl.LightningModule):
     @torch.no_grad()
     def predict(self, batch, batch_idx=None, dataloader_idx=None):
         batch = self._preprocess_batch_input(batch)
-        preds = self.forward_test(batch["img"])
+        preds, _ = self.forward_test(batch["img"])
         results = self.model.head.post_process(preds, batch)
         return results
 

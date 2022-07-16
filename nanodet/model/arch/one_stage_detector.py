@@ -51,7 +51,7 @@ class OneStageDetector(nn.Module):
         with torch.no_grad():
             torch.cuda.synchronize()
             time1 = time.time()
-            preds, _ = self(meta["img"])
+            preds, f = self(meta["img"])
             torch.cuda.synchronize()
             time2 = time.time()
             print("forward time: {:.3f}s".format((time2 - time1)), end=" | ")

@@ -1,11 +1,30 @@
 import argparse
-import json
+from ipaddress import ip_address
 import os
-
+import time
 import cv2
+from urllib3 import Retry
+import torch
+import sys
+sys.path.append('./')
+from tqdm import tqdm
+from glob import glob
+import imageio
+import numpy as np
+from collections import OrderedDict
+from shapely.geometry import Polygon
+from shapely.validation import make_valid
+from scipy.spatial import distance
+from ensemble_boxes import weighted_boxes_fusion
+from nanodet.data.batch_process import stack_batch_img
+from nanodet.data.collate import naive_collate
+from nanodet.data.transform import Pipeline
+from nanodet.util import Logger, cfg, load_config, load_model_weight
+from nanodet.util.path import mkdir
+import json
+
 import numpy as np
 import torch
-
 from matplotlib import pyplot as plt
 from numpy.core.einsumfunc import _parse_possible_contraction
 from numpy.testing._private.utils import measure
@@ -292,10 +311,216 @@ def obj2dict(preds, trackers):
         labels.append(obj)
     return labels
 
-
 def coords(s):
     try:
         x, y = map(int, s.split(','))
         return x, y
     except:
         raise argparse.ArgumentTypeError("Coordinates must be x,y")
+
+
+def get_track_region(type):
+    if type == "front" or type== "rear":
+        # return np.array([300,230,750,1050]).astype(int)
+        return np.array([230,300,1050,750]).astype(int)
+    else:
+        # return np.array([150,200,700,1080]).astype(int)
+        return np.array([200,150,1080,700]).astype(int)
+
+def read_guideline(calib_files):
+    # calib_files = [
+    #             #   'front_view_guideline_calib.txt',
+    #                 'rear_view_guideline_calib.txt'
+    #                 ]
+    datas = []
+    for file in calib_files:
+        singlecalib = []
+        with open(file,'r') as f:
+            data=f.readlines()
+        for i,d in enumerate(data):
+            #d: leftPointX leftPointY rightPointX rightPointY realWidth realDistance
+            if i > 0:
+                singlecalib.append(d.split(';')[0].split(" ") + d.split(';')[1].split(" ") + d.split(';')[2].split(" "))
+        datas.append(np.array(singlecalib).astype(int))
+    return datas
+
+
+def polyiou_overlap(polygon1, polygon2):
+    polygon1 = make_valid(polygon1)
+    polygon2 = make_valid(polygon2)
+    intersect = polygon1.intersection(polygon2).area
+    union = polygon1.union(polygon2).area
+    iou = intersect / union
+    return iou
+
+def rect2poly(rect):
+    w = rect[2] - rect[0]
+    h = rect[3] - rect[1]
+    return np.array([
+                    [rect[0]   , rect[1]],
+                    [rect[0]+w , rect[1]],
+                    [rect[0]   , rect[1]+h],
+                    [rect[2]   , rect[3]],
+                    ])
+
+def wbf(boxes, W, H):
+    '''This function for re-nms the double bboxes after infer'''
+    weights = [2, 1]
+    iou_thr = 0.5
+    skip_box_thr = 0.0001
+    sigma = 0.1
+    bboxes = boxes[:,:4]
+    bboxes[:,0] = bboxes[:,0]/W
+    bboxes[:,1] = bboxes[:,1]/H
+    bboxes[:,2] = bboxes[:,2]/W
+    bboxes[:,3] = bboxes[:,3]/H
+    scores = boxes[:,4]
+    labels = np.ones_like(scores) #no need
+    oboxes, oscores, olabels = weighted_boxes_fusion([bboxes.tolist()], 
+                                                  [scores.tolist()], 
+                                                  [labels.tolist()], 
+                                                  weights=None, 
+                                                  iou_thr=iou_thr, 
+                                                  skip_box_thr=skip_box_thr)
+    oboxes[:,0] = oboxes[:,0]*W
+    oboxes[:,1] = oboxes[:,1]*H
+    oboxes[:,2] = oboxes[:,2]*W
+    oboxes[:,3] = oboxes[:,3]*H
+    return np.hstack([oboxes,oscores[:,None]])
+
+# Define Infinite (Using INT_MAX 
+# caused overflow problems)
+INT_MAX = 10000
+ 
+# Given three collinear points p, q, r, 
+# the function checks if point q lies
+# on line segment 'pr'
+def onSegment(p:tuple, q:tuple, r:tuple) -> bool:
+     
+    if ((q[0] <= max(p[0], r[0])) &
+        (q[0] >= min(p[0], r[0])) &
+        (q[1] <= max(p[1], r[1])) &
+        (q[1] >= min(p[1], r[1]))):
+        return True
+         
+    return False
+ 
+# To find orientation of ordered triplet (p, q, r).
+# The function returns following values
+# 0 --> p, q and r are collinear
+# 1 --> Clockwise
+# 2 --> Counterclockwise
+def orientation(p:tuple, q:tuple, r:tuple) -> int:
+     
+    val = (((q[1] - p[1]) *
+            (r[0] - q[0])) -
+           ((q[0] - p[0]) *
+            (r[1] - q[1])))
+            
+    if val == 0:
+        return 0
+    if val > 0:
+        return 1 # Collinear
+    else:
+        return 2 # Clock or counterclock
+ 
+def doIntersect(p1, q1, p2, q2):
+     
+    # Find the four orientations needed for 
+    # general and special cases
+    o1 = orientation(p1, q1, p2)
+    o2 = orientation(p1, q1, q2)
+    o3 = orientation(p2, q2, p1)
+    o4 = orientation(p2, q2, q1)
+ 
+    # General case    #leftPointX leftPointY rightPointX rightPointY realWidth realDistance
+
+    # Special Cases
+    # p1, q1 and p2 are collinear and
+    # p2 lies on segment p1q1
+    if (o1 == 0) and (onSegment(p1, p2, q1)):
+        return True
+ 
+    # p1, q1 and p2 are collinear and
+    # q2 lies on segment p1q1
+    if (o2 == 0) and (onSegment(p1, q2, q1)):
+        return True
+ 
+    # p2, q2 and p1 are collinear and
+    # p1 lies on segment p2q2
+    if (o3 == 0) and (onSegment(p2, p1, q2)):
+        return True
+ 
+    # p2, q2 and q1 are collinear and
+    # q1 lies on segment p2q2
+    if (o4 == 0) and (onSegment(p2, q1, q2)):
+        return True
+ 
+    #leftPointX leftPointY rightPointX rightPointY realWidth realDistance
+    return False
+ 
+# Returns true if the point p lies 
+# inside the polygon[] with n vertices
+def is_inside_polygon(points:list, bboxes:list):     
+    insides = []
+    for p in bboxes:
+        n = len(points)
+        
+        # There must be at least 3 vertices
+        # in polygon
+        if n < 3:
+            return False
+            
+        # Create a point for line segment
+        # from p to infinite
+        extreme = (INT_MAX, p[1])
+        count = i = 0
+        
+        while True:
+            next = (i + 1) % n
+            
+            # Check if the line segment from 'p' to 
+            # 'extreme' intersects with the line 
+            # segment from 'polygon[i]' to 'polygon[next]'
+            if (doIntersect(points[i],
+                            points[next],
+                            p, extreme)):
+                                
+                # If the point 'p' is collinear with line 
+                # segment 'i-next', then check if it lies 
+                # on segment. If it lies, return true, otherwise false
+                if orientation(points[i], p,
+                            points[next]) == 0:
+                    return onSegment(points[i], p,
+                                    points[next])
+                                    
+                count += 1
+                
+            i = next
+            
+            if (i == 0):
+                break
+            
+        # Return true if count is odd, false otherwise
+        insides.append(count % 2 == 1)
+    return insides
+
+def points2check(box):
+    w = box[2] - box[0]
+    h = box[3] - box[1]
+    return [
+            #br
+            (box[2],box[3]),
+            #bl
+            (box[0],box[3]),
+            #bm
+            (box[2]-w/2, box[3]),
+            #br - 1/4*w
+            (box[2]-w/4, box[3]),
+            #bl + 1/4*w
+            (box[2]-3*w/4, box[3]),
+            #br - 1/6*h
+            # (box[2], box[3]-10),
+            #bl - 1/6*h
+            # (box[0], box[3]-10)
+    ]

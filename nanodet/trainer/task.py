@@ -42,6 +42,7 @@ class TrainingTask(LightningModule):
     def __init__(self, cfg, evaluator=None):
         super(TrainingTask, self).__init__()
         self.cfg = cfg
+        self.neadby_test = cfg.neadby_test
         self.model = build_model(cfg.model)
         self.evaluator = evaluator
         self.save_flag = -10
@@ -68,7 +69,7 @@ class TrainingTask(LightningModule):
     @torch.no_grad()
     def predict(self, batch, batch_idx=None, dataloader_idx=None):
         batch = self._preprocess_batch_input(batch)
-        preds = self.forward(batch["img"])
+        preds, _ = self.forward(batch["img"])
         results = self.model.head.post_process(preds, batch)
         return results
 
@@ -185,6 +186,8 @@ class TrainingTask(LightningModule):
         results = {}
         for res in test_step_outputs:
             results.update(res)
+        # if self.neadby_test:
+        #     for in tqdm(range(results)):
         all_results = (
             gather_results(results)
             if dist.is_available() and dist.is_initialized()

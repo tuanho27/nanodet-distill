@@ -21,7 +21,7 @@ from nanodet.util.path import mkdir
 from nanodet.collision.trackers.sorttracker import SORT, KalmanBoxTracker
 from nanodet.collision.trackers.utils import *
 from nanodet.collision.timer import Timer
-from nanodet.collision.visualize import *
+from nanodet.util.helpers import *
 
 image_ext = [".jpg", ".jpeg", ".webp", ".bmp", ".png"]
 video_ext = ["mp4", "mov", "avi", "mkv"]

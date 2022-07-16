@@ -5,7 +5,7 @@
 #           AP_small = 0.106
 #               AP_m = 0.322
 #               AP_l = 0.477
-save_dir: workspace/darknet_320_fisheye-resize-distill-triplet-ft
+save_dir: workspace/darknet_320_fisheye-resize-distill-addnearby12
 model:
   weight_averager:
     name: ExpMovingAverager
@@ -153,14 +153,15 @@ data:
     pipeline:
       normalize: [[103.53, 116.28, 123.675], [57.375, 57.12, 58.395]]
 device:
-  gpu_ids: [0,1,2,3]
+  gpu_ids: [0,1]
   workers_per_gpu: 12
   batchsize_per_gpu: 128
 schedule:
   # resume:
   load_model: workspace/darknet_320_fisheye-resize/model_best/model_best.ckpt
   # load_model: workspace/darknet_320_fisheye-resize-distill/model_best/model_best.ckpt
-  load_teacher_model: workspace/efficientlite4_320_fisheye-resize/model_best/model_best.ckpt
+  # load_teacher_model: workspace/efficientlite4_320_fisheye-resize/model_best/model_best.ckpt
+  load_teacher_model: workspace/darknet_320_fisheye-resize-distill-addnearby12/model_best/model_best.ckpt
   optimizer:
     name: SGD
     lr: 0.03
