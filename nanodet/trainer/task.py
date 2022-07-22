@@ -28,7 +28,8 @@ from nanodet.util import convert_avg_params, gather_results, mkdir
 
 from ..model.arch import build_model
 from ..model.weight_averager import build_weight_averager
-
+from nanodet.util.helpers import *
+from collections import defaultdict
 
 class TrainingTask(LightningModule):
     """
@@ -39,10 +40,14 @@ class TrainingTask(LightningModule):
         evaluator: Evaluator for evaluating the model performance.
     """
 
-    def __init__(self, cfg, evaluator=None):
+    def __init__(self, cfg, evaluator=None, neadby_test=False):
         super(TrainingTask, self).__init__()
         self.cfg = cfg
-        self.neadby_test = cfg.neadby_test
+        self.neadby_test = neadby_test
+        self.img_h = 800
+        self.img_w = 1280
+        if self.neadby_test:
+            self.static_guide_points = read_guideline(['./calib/e34/rear_view_guideline_calib.txt'])[0]
         self.model = build_model(cfg.model)
         self.evaluator = evaluator
         self.save_flag = -10
@@ -186,8 +191,29 @@ class TrainingTask(LightningModule):
         results = {}
         for res in test_step_outputs:
             results.update(res)
-        # if self.neadby_test:
-        #     for in tqdm(range(results)):
+        new_results = {}
+        if self.neadby_test:
+            contour = np.array(self.static_guide_points[0:5,:4]).reshape(10,2)
+            contour_update = [
+                        tuple(contour[0]), 
+                        tuple(contour[1]),
+                        tuple(contour[9]),
+                        tuple([self.img_w, self.img_h]),
+                        tuple([0,self.img_h]),
+                        tuple(contour[8]),
+                    ]
+            for k,result in tqdm(results.items()):
+                nearby_bboxes = {0:[], 1:[], 2:[]}
+                for cls, bboxes in result.items():
+                    if len(bboxes) > 0:
+                        for box in bboxes:
+                            points_to_check = points2check(box)
+                            check_nearby = is_inside_polygon(contour_update, points_to_check)
+                            if np.array(check_nearby).mean() > 0.5:
+                                nearby_bboxes[cls].append(box)
+
+                new_results[k] = nearby_bboxes    
+            results = new_results
         all_results = (
             gather_results(results)
             if dist.is_available() and dist.is_initialized()

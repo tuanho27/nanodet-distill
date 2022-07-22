@@ -127,6 +127,8 @@ class CocoDataset(BaseDataset):
         if "woodscape" in file_name:
             name = file_name.split("woodscape_")[-1] + ".png"
             file_name = f"woodscape/{name}"
+        elif "MOT" in file_name:
+            file_name = file_name
         else:
             fname = "_".join(file_name.split("_")[:-1])
             file_name = fname + '/images/' + file_name

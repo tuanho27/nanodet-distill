@@ -25,7 +25,7 @@ from nanodet.util.path import mkdir
 from nanodet.collision.trackers.sorttracker import SORT, KalmanBoxTracker
 from nanodet.collision.trackers.utils import *
 from nanodet.collision.timer import Timer
-from nanodet.collision.visualize import *
+from nanodet.util.helpers import *
 
 image_ext = [".jpg", ".jpeg", ".webp", ".bmp", ".png"]
 video_ext = ["mp4", "mov", "avi", "mkv"]
@@ -141,37 +141,6 @@ def get_image_list(path):
 def generator():
   while True:
     yield
-
-def get_track_region(type):
-    if type == "front" or type== "rear":
-        return np.array([230,300,1050,750]).astype(int)
-    else:
-        return np.array([200,150,1080,700]).astype(int)
-
-
-def wbf(boxes, W, H):
-    '''This function for re-nms the double bboxes after infer'''
-    weights = [2, 1]
-    iou_thr = 0.5
-    skip_box_thr = 0.0001
-    sigma = 0.1
-    bboxes = boxes[:,:4]
-    bboxes[0] = bboxes[0]/W
-    bboxes[1] = bboxes[1]/H
-    bboxes[2] = bboxes[0]/W
-    bboxes[3] = bboxes[0]/H
-    scores = boxes[:,4]
-    labels = np.ones_like(scores) #no need
-    oboxes, oscores, olabels = weighted_boxes_fusion([bboxes.tolist()], 
-                                                  [scores.tolist()], 
-                                                  [labels.tolist()], 
-                                                  weights=None, 
-                                                  iou_thr=iou_thr, 
-                                                  skip_box_thr=skip_box_thr)
-    oboxes = np.concatenate(oboxes)
-    oscores = np.concatenate(oscores)
-
-    return np.stack([oboxes,oscores])
 
 def main():
     args = parse_args()

@@ -188,7 +188,7 @@ def main():
     elif args.demo == "image_folder":
         # image_list = sorted(glob(os.path.join(args.path,"*.jpeg")))
         # image_list = sorted(glob(os.path.join(args.path,"image_0*")))
-        image_list = sorted(glob(os.path.join(args.path,"*.jpg")))
+        image_list = sorted(glob(os.path.join(args.path,"*.jpg")))[106:]
         print(f"Total Frame: {len(image_list)}")
         os.makedirs("./dump", exist_ok=True)
         save_path = f"demo_images_nearby.mp4"
@@ -238,6 +238,8 @@ def main():
                             visualize(im, trk, args, contour)
                     result_frame = im
                 else:
+                    static_guide_points =  np.concatenate((static_guide_points[0:5,:4],np.array([[0,img_h, img_w, img_h]])))
+
                     im = drawGuideLines(frame, static_guide_points)
                     rects = []
                     for label, bboxes in res[0].items():
@@ -247,38 +249,59 @@ def main():
                             rects.append(np.array(np.array(bboxes)[mask]))
                     if len(rects) == 0:
                         rects = np.empty((0, 5))
-                    try:
+
+                    try:    
+                        # rects = np.concatenate(rects)
                         rects = wbf(np.concatenate(rects), img_w, img_h)                    
                     except:
                         rects = rects
+
+                    im = plot_det(im, rects, color=(0,255,0))
+                    
                     valid_rects = []
                     contour = np.array(static_guide_points[0:5,:4]).reshape(10,2)
-                    contour_update = [tuple(contour[0]), tuple(contour[2]), tuple(contour[8]), (0,img_h),
-                                      (img_w, img_h),tuple(contour[9]), tuple(contour[3]), tuple(contour[1]), 
-                                     ]
+                    # contour_update = [tuple(contour[0]), tuple(contour[2]), tuple(contour[4]), 
+                    #                   tuple(contour[5]), tuple(contour[3]), tuple(contour[1])]
+                    # contour =  np.concatenate((static_guide_points[0:5,:4],np.array([[0,img_h, img_w, img_h]])))
+
+                    # contour =  np.concatenate((static_guide_points[0:5,:4],np.array([[0,img_h, img_w, img_h]])))
+                    # contour = np.concatenate((contour[:,:2], np.flip(contour[:,2:])))
+                    contour_update = [
+                        tuple(contour[0]), 
+                        tuple(contour[1]),
+                        tuple(contour[9]),
+                        tuple([img_w, img_h]),
+                        tuple([0,img_h]),
+                        tuple(contour[8]),
+                        
+
+                    ]
+                    # contour = static_guide_points
+                    # contour = np.concatenate((contour[:,:2], np.flip(contour[:,2:])))
+                    # contour_update = [tuple(p) for p in contour.tolist()]
                     for bbox in rects:
                         # bbox_contour = rect2poly(bbox.astype(int))
                         # iou = polyiou_overlap(Polygon(contour), Polygon(bbox_contour))
-                        # if iou > 0:
                         ## add point to check
-                        import ipdb; ipdb.set_trace()
-
                         points_to_check = points2check(bbox)
+                        for p in points_to_check:
+                            cv2.circle(im, (int(p[0]),int(p[1])), radius=3, color=(0,128,255), thickness=-1)
                         check_nearby = is_inside_polygon(contour_update, points_to_check)
-                        if np.array(check_nearby).mean() > 0.5:
-                            print("######################################################: ",check_nearby)
+                        print(check_nearby)
 
+                        # if iou > 0:
+                        if np.array(check_nearby).mean() > 0.5:
                             valid_rects.append(bbox)
+                            print("\n@@@@@@@@ ", np.array(check_nearby).mean())
                     if len(valid_rects) > 0:
-                        im = plot_det(im, valid_rects, color=(0,255,0))
-                        # distance = [np.linalg.norm(np.array(box[2], box[3]) - np.array((box[2],img_h))) for box in valid_rects]
-                        # distances = [distance.euclidean(np.array(box[2], box[3]),np.array((box[2],img_h))) for box in valid_rects]
-                        distances = [np.sqrt((box[3] - img_h)**2) for box in valid_rects]
-                        idx = np.argmin(np.array(distances))
+                        im = plot_det(im, valid_rects, color=(255,0,0))
+                        distance = [np.linalg.norm(np.array(box[2], box[3]) - np.array((box[2],img_h))) for box in valid_rects]
+                        idx = np.argmax(np.array(distance))
                         threat = [valid_rects[idx]] 
                     else:
                         threat = valid_rects
-                    im = plot_det(im, threat, color=(0,0,255))
+                    # im = plot_det(im, rects)
+                    im = plot_det(im, threat, (0,0,255))
 
                     result_frame = im
 

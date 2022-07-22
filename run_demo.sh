@@ -8,8 +8,12 @@
 #rear
 # python demo/demo.py image_folder --config config/nanodet-plus-m_416.yml --model checkpoints/nanodet-plus-m_416-fisheye/model_best/model_best.ckpt \
                                 #  --path /data/fod/dataset/20220413/batch-5/2022-04-13-17-41-11_46/2d-raw/cam_3/ 
-python demo/demo.py image_folder --config config/nanodet-plus-m_416.yml --model checkpoints/nanodet-plus-m_416-fisheye/model_best/model_best.ckpt \
-                                 --path /data/fod/dataset/20220413/batch-5/2022-04-13-17-44-56_51/2d-raw/cam_3/ 
+# python demo/demo.py image_folder --config config/nanodet-plus-m_416.yml --model checkpoints/nanodet-plus-m_416-fisheye/model_best/model_best.ckpt \
+#                                  --path /data/fod/dataset/20220413/batch-5/2022-04-13-17-44-56_51/2d-raw/cam_3/ 
+
+python demo/demo_update.py image_folder --config config/nanodet-plus-m_320_darknet-fisheye.yml \
+                                        --model /home/ubuntu/Workspace/tuan-dev/fisheye_od/nanodet/workspace/darknet_320_fisheye-resize-distill/model_best/model_best.ckpt \
+                                        --path /home/ubuntu/Workspace/datasets/od/fisheye_5class/nearby_2/images/
 # luxsa
 # python demo/demo.py image_folder --config config/nanodet-plus-m_416.yml --model checkpoints/nanodet-plus-m_416-fisheye/model_best/model_best.ckpt \
                                 #  --path /data/fod/dataset/self-label/task_bv_thanhnhan_camfront-2022_05_19_10_24_55-coco/images/

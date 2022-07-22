@@ -62,7 +62,7 @@ def main(args):
     val_dataset = build_dataset(cfg.data.val, args.task)
     val_dataloader = torch.utils.data.DataLoader(
         val_dataset,
-        batch_size=cfg.device.batchsize_per_gpu,
+        batch_size=1,#cfg.device.batchsize_per_gpu,
         shuffle=False,
         num_workers=cfg.device.workers_per_gpu,
         pin_memory=True,
@@ -72,7 +72,7 @@ def main(args):
     evaluator = build_evaluator(cfg.evaluator, val_dataset)
 
     logger.info("Creating model...")
-    task = TrainingTask(cfg, evaluator)
+    task = TrainingTask(cfg, evaluator, neadby_test=True)
 
     ckpt = torch.load(args.model)
     if "pytorch-lightning_version" not in ckpt:
