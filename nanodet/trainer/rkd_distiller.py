@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 # from trainer import KDTrainer
-import util
+# import util
 
 
 BIG_NUMBER = 1e12
@@ -310,7 +310,7 @@ class DistanceWeighted(_Sampler):
         return anchor_idx, pos_idx, neg_idx
 
 
-class RKDTrainer:
+class RKDDistill:
     def __init__(self):
         self.triplet_ratio = 0.0
         self.triplet_margin = 0.2
@@ -340,7 +340,7 @@ class RKDTrainer:
         at_loss = 0
         # technically we should use every layer expect the first here
         # not sure if this will change the outcome significantly
-        for idx, s_feat in enumerate(s_feats, start=1):
+        for idx, s_feat in enumerate(s_feats, start=0):
             at_loss += self.at_ratio * \
                 self.at_criterion(s_feat, t_feats[idx])
                 
@@ -349,7 +349,7 @@ class RKDTrainer:
         # dark_loss = self.dark_ratio * self.dark_criterion(s_out, t_out)
         # loss += dist_loss + angle_loss + dark_loss
         loss = dist_loss + angle_loss #+ dark_loss
-        return {"rkd_loss": loss}
+        return loss #{"rkd_loss": loss}
 
 
 # def run_rkd_distillation(s_net, t_net, **params):

@@ -47,7 +47,8 @@ class TrainingTask(LightningModule):
         self.img_h = 800
         self.img_w = 1280
         if self.neadby_test:
-            self.static_guide_points = read_guideline(['./calib/e34/rear_view_guideline_calib.txt'])[0]
+            # self.static_guide_points = read_guideline(['./calib/e34/rear_view_guideline_calib.txt'])[0]
+            self.static_guide_points = read_guideline(['./calib/ford/rear_view_guideline_calib.txt'])[0]
         self.model = build_model(cfg.model)
         self.evaluator = evaluator
         self.save_flag = -10

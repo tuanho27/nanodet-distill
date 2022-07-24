@@ -21,7 +21,7 @@ from nanodet.util import convert_avg_params, gather_results, mkdir
 
 from ..model.arch import build_model
 from ..model.weight_averager import build_weight_averager
-
+from .rkd_distiller import RKDDistill
 
 
 class TrainingDistillTask(pl.LightningModule):
@@ -51,9 +51,11 @@ class TrainingDistillTask(pl.LightningModule):
         self.teacher_model = build_model(cfg.teacher_model) # Set teacher models
         self.softmax = torch.nn.Softmax(1)
         self.conv1x1 = torch.nn.Conv2d(cfg.teacher_model.arch.fpn.in_channels[-1], cfg.model.arch.fpn.in_channels[-1], 1)
+        self.conv1x12 = torch.nn.Conv2d(cfg.teacher_model.arch.fpn.in_channels[-2], cfg.model.arch.fpn.in_channels[-2], 1)
         self.triplet = F.cosine_embedding_loss
         self.lambda_student = 0.7
         self.T_student = 2.0
+        self.rkd = RKDDistill()
         # self.kd_fun = torch.nn.KLDivLoss(size_average=False).to(self.device)
     
     def kd_triplet_loss(self, out_s, out_t, target):
@@ -115,7 +117,7 @@ class TrainingDistillTask(pl.LightningModule):
             )
         student_prob = student_prob.reshape(-1, self.cfg.model.arch.head.num_classes)
         student_logits = feat[-1]
-
+        bz = student_logits.shape[0]
         final_state_loss = loss_states
         # print(f"TC prob: {teacher_prob.shape} ST prob: {student_prob.shape}")
         # print(f"TC logit: {teacher_logits.shape} ST logit: {student_logits.shape}")
@@ -123,13 +125,18 @@ class TrainingDistillTask(pl.LightningModule):
         kl_loss  = F.kl_div(self.softmax(student_prob), self.softmax(teacher_prob), reduction='batchmean') * (self.temperature**2) + 0.1
         embed_loss = 1 - torch.mean(F.cosine_similarity(student_logits, self.conv1x1(teacher_logits), dim=-1)) #this loss will be small if two tensor are similar
         # kd_triplet_loss = self.kd_triplet_loss(student_prob, teacher_prob, prior_assigns[0])
+        rkd_loss = self.rkd.calculate_loss([self.conv1x1(tc_feat[-1]), self.conv1x12(tc_feat[-2])],
+                                            F.adaptive_avg_pool2d(teacher_logits, 1).view(bz,-1), 
+                                            [feat[-1], feat[-2]], 
+                                            F.adaptive_avg_pool2d(student_logits, 1).view(bz,-1))
 
         final_state_loss["kd_loss"] = kl_loss
         final_state_loss["cos_embed_loss"] = embed_loss
         # final_state_loss['kd_triplet_loss'] = self.kd_triplet_loss(student_prob, teacher_prob, prior_assigns[0])
+        final_state_loss["rkd_loss"] = rkd_loss
 
         # final_loss = loss + kd_triplet_loss #+ kl_loss + embed_loss
-        final_loss = loss + kl_loss + embed_loss
+        final_loss = loss + kl_loss + embed_loss + rkd_loss
 
         logit_diff = F.mse_loss(student_logits, self.conv1x1(teacher_logits))
         prob_diff = F.l1_loss(self.softmax(student_prob), self.softmax(teacher_prob))
