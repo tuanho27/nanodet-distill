@@ -21,8 +21,11 @@ from .mobilenetv2 import MobileNetV2
 from .repvgg import RepVGG
 from .resnet import ResNet
 from .shufflenetv2 import ShuffleNetV2
-from .resnest import resnest200
 from .darknet import CSPDarknet
+import sys
+from .mcunet.model_zoo import build_model
+from .convnext import ConvNext
+
 
 def build_backbone(cfg):
     backbone_cfg = copy.deepcopy(cfg)
@@ -41,11 +44,11 @@ def build_backbone(cfg):
         return CustomCspNet(**backbone_cfg)
     elif name == "RepVGG":
         return RepVGG(**backbone_cfg)
-    elif name == "Resnest":
-        return resnest200(pretrained=True,**backbone_cfg)
-    elif name == "Resnest101":
-        return resnest101(pretrained=True,**backbone_cfg)
     elif name == "CSPDarknet":
         return CSPDarknet(**backbone_cfg)
+    elif name == 'MCUNetv2':
+        return build_model('mcunet-10fps', pretrained=True)
+    elif name == 'ConvNext':
+        return ConvNext()
     else:
         raise NotImplementedError
