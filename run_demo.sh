@@ -42,7 +42,8 @@
 ############### QC test data #################
 # python demo/demo_nearby_threat.py image_folder --config config/nanodet-plus-m_320_darknet-fisheye.yml \
 #                                         --model workspace/darknet_320_fisheye-resize-udpate-regmax-addnearby123motvoc-night-cleandata-5classes/model_best/model_best.ckpt \
-#                                         --path data/TEST/
+#                                         --path /data/fod/dataset/TEST/ \
+#                                         --save_result
 
 ########### Rear AEB demo ################
 # python demo/demo_track_raeb.py image_folder --config config/nanodet-plus-m_320_darknet-fisheye.yml \
@@ -67,8 +68,19 @@
 #                                         --reID_model_path yolov7-deepsort-tracking/deep_sort/model_weights/mars-small128.pb \
 #                                         --save_result 
 
-python demo/demo_track_raeb.py video --config config/nanodet-plus-m_320_darknet-fisheye.yml \
-                                        --model workspace/darknet_320_fisheye-resize-udpate-regmax-addnearby123motvoc-night-cleandata-5classes/model_best/model_best.ckpt \
-                                        --path /data/fod/dataset/videos/rear_view_01Feb23/videos/cams_1675244576348.mp4 \
-                                        --reID_model_path yolov7-deepsort-tracking/deep_sort/model_weights/mars-small128.pb \
+# python demo/demo_track_raeb.py video --config config/nanodet-plus-m_320_darknet-fisheye.yml \
+#                                         --model workspace/darknet_320_fisheye-resize-udpate-regmax-addnearby123motvoc-night-cleandata-5classes/model_best/model_best.ckpt \
+#                                         --path /data/fod/dataset/videos/rear_view_01Feb23/videos/cams_1675244576348.mp4 \
+#                                         --reID_model_path yolov7-deepsort-tracking/deep_sort/model_weights/mars-small128.pb \
+#                                         --save_result                                         
+
+########### Icon update UI/UX demo ################
+
+# python demo/demo_icon_ux.py image_folder --config config/nanodet-plus-m_320_darknet-fisheye.yml \
+#                                          --model workspace/darknet_320_fisheye-resize-udpate-regmax-addnearby123motvoc-night-cleandata-5classes/model_best/model_best.ckpt \
+#                                          --path /data/fod/dataset/test_icon_ux \
+#                                          --save_result
+python demo/demo_icon_ux.py image_folder --config config/nanodet-EfficientNet-Lite4_320_fisheye-resize.yml \
+                                        --model workspace/efficientlite4_320_fisheye-resize-night-cleandata-5classes/model_best/model_best.ckpt \
+                                        --path /data/fod/dataset/test_icon_ux \
                                         --save_result                                         

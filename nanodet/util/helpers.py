@@ -186,13 +186,22 @@ def points2check(box):
     ]
 
 def get_color(idx):
-    idx = idx * 3
+    idx = idx * 5
     color = ((37 * idx) % 255, (17 * idx) % 255, (29 * idx) % 255)
 
     return color
 
+icons = {
+    0:cv2.imread("/data/fod/nanodet-distill-bkfromserver/icons/pedestrian.png"),
+    1:cv2.imread("/data/fod/nanodet-distill-bkfromserver/icons/vehicle.png"),
+    2:cv2.imread("/data/fod/nanodet-distill-bkfromserver/icons/cyclist.png"),
+}
+
 def plot_det(img, boxes, color=None):
+
+    zero_im = np.ones_like(img)
     for i in range(len(boxes)):
+        obj_id = boxes[i][5]
         box = boxes[i][:4]
         score =  boxes[i][4]
         x0 = int(box[0])
@@ -200,19 +209,29 @@ def plot_det(img, boxes, color=None):
         x1 = int(box[2])
         y1 = int(box[3])
         if color is None:
-            color = (255,0,0)
+            icolor = get_color(int(obj_id))
         else:
-            color = color
+            icolor = color
         text = '{:.1f}%'.format(score * 100)
         txt_color = (255, 0, 0) #if np.mean(_COLORS[0]) > 0.5 else (255, 255, 255)
         font = cv2.FONT_HERSHEY_SIMPLEX
 
         txt_size = cv2.getTextSize(text, font, 0.4, 1)[0]
-        cv2.rectangle(img, (x0, y0), (x1, y1), color, 2)
-
+        # cv2.rectangle(img, (x0, y0), (x1, y1), icolor, 2)
+        w = x1-x0
+        h = y1-y0
+        minwh = int(min((w/3,h/3)))
+        icon = cv2.resize(icons[obj_id], (minwh,minwh))
+        try:
+            zero_im[int(y0+h/4):int(y0+h/4+minwh), int(x0):int(x0+minwh), :] = icon
+            img[int(y0+h/4):int(y0+h/4+minwh), int(x0):int(x0+minwh), :] = np.zeros_like(icon)
+        except:
+            import ipdb; ipdb.set_trace()
         cv2.putText(img, text, (x0, y0 + txt_size[1]), font, 0.4, txt_color, thickness=1)
 
-    return img
+
+    return cv2.add(img, zero_im)
+    # return cv2.addWeighted(img, 0.7, zero_im, 0.5,0)
 
 
 def plot_tracking_old(image, tlwhs, obj_ids, cls_ids, vels=None, frame_id=0, fps=0., ids2=None):

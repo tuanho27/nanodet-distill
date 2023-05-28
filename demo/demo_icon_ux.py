@@ -15,7 +15,7 @@ from collections import OrderedDict
 from shapely.geometry import Polygon
 from shapely.validation import make_valid
 from scipy.spatial import distance
-from ensemble_boxes import weighted_boxes_fusion
+# from ensemble_boxes import weighted_boxes_fusion
 from nanodet.data.batch_process import stack_batch_img
 from nanodet.data.collate import naive_collate
 from nanodet.data.transform import Pipeline
@@ -198,7 +198,7 @@ def main():
     predictor = Predictor(cfg, args.model, logger, device="cuda:0", distill=True)
     logger.log('Press "Esc", "q" or "Q" to exit.')
     current_time = time.localtime()
-    static_guide_points = read_guideline(['./calib/e34/object_detection_area_front_cam.txt'])[0]
+    static_guide_points = read_guideline(['./calib/e34/object_detection_area_rear_cam.txt'])[0]
 
     # creat output folder
     args.experiment_name = args.config.split("/")[-1].split(".yml")[0]
@@ -253,50 +253,47 @@ def main():
             frame = cv2.imread(imp)
             meta, res = predictor.inference(frame)
             img_h, img_w = meta['img_info']['height'][0], meta['img_info']['width'][0]
-            outputs = get_new_output_format(res[0], 0.3)
+            outputs = get_new_output_format(res[0], 0.32)
             if len(outputs) > 0:
                 rects = outputs.numpy()
                 static_guide_points =  np.concatenate((static_guide_points[0:5,:4],np.array([[0,img_h, img_w, img_h]])))
-                im = drawGuideLines(frame, static_guide_points)
-                try:    
-                    # rects = np.concatenate(rects)
-                    rects = wbf(np.concatenate(rects), img_w, img_h)                    
-                except:
-                    rects = rects
-                im = plot_det(im, rects, color=(0,255,0))
+                # im = drawGuideLines(frame, static_guide_points)
+                # im = plot_det(im, rects, color=(0,255,0))
+                im = plot_det(frame, rects)
                 
-                valid_rects = []
-                contour = np.array(static_guide_points[0:5,:4]).reshape(10,2)
-                contour_update = [
-                    tuple(contour[0]), 
-                    tuple(contour[1]),
-                    tuple(contour[9]),
-                    tuple([img_w, img_h]),
-                    tuple([0,img_h]),
-                    tuple(contour[8]),
+                # valid_rects = []
+                # contour = np.array(static_guide_points[0:5,:4]).reshape(10,2)
+                # contour_update = [
+                #     tuple(contour[0]), 
+                #     tuple(contour[1]),
+                #     tuple(contour[9]),
+                #     tuple([img_w, img_h]),
+                #     tuple([0,img_h]),
+                #     tuple(contour[8]),
                     
-                ]
-                for bbox in rects:
-                    # bbox_contour = rect2poly(bbox.astype(int))
-                    # iou = polyiou_overlap(Polygon(contour), Polygon(bbox_contour))
-                    ## add point to check
-                    points_to_check = points2check(bbox)
-                    for p in points_to_check:
-                        cv2.circle(im, (int(p[0]),int(p[1])), radius=3, color=(0,128,255), thickness=-1)
-                    check_nearby = is_inside_polygon(contour_update, points_to_check)
+                # ]
+                # for bbox in rects:
+                #     # bbox_contour = rect2poly(bbox.astype(int))
+                #     # iou = polyiou_overlap(Polygon(contour), Polygon(bbox_contour))
+                #     ## add point to check
+                #     points_to_check = points2check(bbox)
+                #     for p in points_to_check:
+                #         cv2.circle(im, (int(p[0]),int(p[1])), radius=3, color=(0,128,255), thickness=-1)
+                #     check_nearby = is_inside_polygon(contour_update, points_to_check)
 
-                    if np.array(check_nearby).mean() > 0.25:
-                        valid_rects.append(bbox)
+                #     if np.array(check_nearby).mean() > 0.25:
+                #         valid_rects.append(bbox)
 
-                if len(valid_rects) > 0:
-                    im = plot_det(im, valid_rects, color=(255,0,0))
-                    distance = [np.linalg.norm(np.array(box[2], box[3]) - np.array((box[2],img_h))) for box in valid_rects]
-                    idx = np.argmax(np.array(distance))
-                    threat = [valid_rects[idx]] 
-                else:
-                    threat = valid_rects
+                # if len(valid_rects) > 0:
+                #     im = plot_det(im, valid_rects, color=(255,0,0))
+                #     distance = [np.linalg.norm(np.array(box[2], box[3]) - np.array((box[2],img_h))) for box in valid_rects]
+                #     idx = np.argmax(np.array(distance))
+                #     threat = [valid_rects[idx]] 
+                # else:
+                #     threat = valid_rects
+
                 # im = plot_det(im, rects)
-                im = plot_det(im, threat, (0,0,255))
+                # im = plot_det(im, threat, (0,0,255))
                 result_frame = im
             frame_id
             time_accum = time_accum + (time.perf_counter()-t0)

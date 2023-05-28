@@ -67,7 +67,7 @@ class TopView360Handler:
         # self.uv_map = np.loadtxt("calib/rearVUV.txt")
         # half_car_w_in_px= int(2.9 / dX)
         # half_car_h_in_px = int(1.3 / dY)
-        half_car_w_in_px= int(2.0 / dX)
+        half_car_w_in_px= int(2.3 / dX)
         half_car_h_in_px = int(1.0 / dY)
 
         alphas = [cv2.imread(f'{calib_folder}/alpha_{i}.png', cv2.IMREAD_GRAYSCALE) for i in range(4)]
@@ -380,3 +380,23 @@ class TopView360Handler:
                 track_im =  cv2.putText(track_im, id_text, (intbox[0], intbox[1]), cv2.FONT_HERSHEY_PLAIN, text_scale, (0, 255, 0), thickness=text_thickness)
 
         return self.topview, track_im
+
+
+if __name__=="main":
+    with open(f'calib/cameraData.json', 'r') as f:
+        calib_data = json.load(f)
+        calib_data = calib_data['Items']
+
+    bev_mapping = TopView360Handler(calib_data, num_channels=3, dX=0.1, dY = 0.1, grid_rows=180,
+                                        grid_cols=160, borderValue=0)
+    data_rgb = {
+        "front": cv2.imread("/data/parking/code/parking/samples/data/image_1_1666166760959.png"),
+        "rear": cv2.imread("/data/parking/code/parking/samples/data/image_0_1666166760836.png"),
+        "left": cv2.imread("/data/parking/code/parking/samples/data/image_2_1666166760983.png"),
+        "right": cv2.imread("/data/parking/code/parking/samples/data/image_3_1666166760935.png")
+        }
+        
+    topview_image_rgb = bev_mapping.handle(data_rgb)
+    cv2.imwrite("/data/parking/code/parking/samples/data/image_topview.png", 
+                cv2.rotate(cv2.resize(topview_image_rgb, None, fx=2, fy=2, interpolation = cv2.INTER_CUBIC),cv2.ROTATE_90_CLOCKWISE)
+                )
